@@ -1,0 +1,61 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Shared glow: blur layer composited under the solid fill -->
+    <filter id="glow" color-interpolation-filters="sRGB"
+            x="-120%" y="-120%" width="340%" height="340%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Background gradient: dark blue-navy -->
+    <radialGradient id="bg" cx="38%" cy="32%" r="72%">
+      <stop offset="0%"   stop-color="#1c2340"/>
+      <stop offset="100%" stop-color="#090d1a"/>
+    </radialGradient>
+
+    <!-- Lens glass fill -->
+    <radialGradient id="glass" cx="36%" cy="28%" r="65%">
+      <stop offset="0%"   stop-color="#18203a"/>
+      <stop offset="100%" stop-color="#0e1426"/>
+    </radialGradient>
+
+    <!-- Subtle highlight glare on the lens -->
+    <radialGradient id="glare" cx="32%" cy="22%" r="42%">
+      <stop offset="0%"   stop-color="rgba(255,255,255,0.10)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+  </defs>
+
+  <!-- App icon background -->
+  <rect width="512" height="512" rx="100" fill="url(#bg)"/>
+
+  <!-- Lens glass interior -->
+  <circle cx="208" cy="198" r="150" fill="url(#glass)"/>
+
+  <!-- Timeline track bar inside the lens -->
+  <rect x="90" y="185" width="236" height="26" rx="13"
+        fill="rgba(255,255,255,0.06)"/>
+
+  <!-- Gold orb — Kill -->
+  <circle cx="148" cy="198" r="24" fill="#f0c030" filter="url(#glow)"/>
+
+  <!-- Purple orb — Dragon -->
+  <circle cx="208" cy="198" r="24" fill="#b050f0" filter="url(#glow)"/>
+
+  <!-- Red orb — Death -->
+  <circle cx="268" cy="198" r="24" fill="#f03858" filter="url(#glow)"/>
+
+  <!-- Lens ring -->
+  <circle cx="208" cy="198" r="150" fill="none"
+          stroke="#c4ceec" stroke-width="22"/>
+
+  <!-- Glare overlay on lens -->
+  <circle cx="208" cy="198" r="150" fill="url(#glare)"/>
+
+  <!-- Handle -->
+  <line x1="318" y1="308" x2="412" y2="402"
+        stroke="#c4ceec" stroke-width="38" stroke-linecap="round"/>
+</svg>

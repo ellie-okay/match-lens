@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm install
+
+      - name: Download FFmpeg sidecar
+        shell: pwsh
+        run: |
+          $binDir = "src-tauri\binaries"
+          $ffmpegExe = "$binDir\ffmpeg-x86_64-pc-windows-msvc.exe"
+          New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+          $zipPath = "$env:TEMP\ffmpeg-release.zip"
+          $extractDir = "$env:TEMP\ffmpeg-extract"
+          Invoke-WebRequest "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile $zipPath
+          Expand-Archive $zipPath -DestinationPath $extractDir -Force
+          $extracted = Get-ChildItem "$extractDir" -Recurse -Filter "ffmpeg.exe" |
+            Where-Object { $_.DirectoryName -like "*\bin" } |
+            Select-Object -First 1
+          if (-not $extracted) { Write-Error "ffmpeg.exe not found in archive"; exit 1 }
+          Copy-Item $extracted.FullName $ffmpegExe
+
+      - name: Generate icons
+        run: npx tauri icon src-tauri/icons/icon.svg
+
+      - name: Build
+        run: npm run tauri build
+
+      - name: Upload installer
+        uses: softprops/action-gh-release@v2
+        with:
+          files: src-tauri/target/release/bundle/nsis/*-setup.exe
+          fail_on_unmatched_files: true
