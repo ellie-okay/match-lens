@@ -231,12 +231,35 @@ pub async fn watch_game_phase(tx: mpsc::Sender<GamePhase>) {
     }
 }
 
+/// Fetch the game ID for the currently active game from the LCU gameflow session.
+/// Call this at game start (InProgress) to anchor which game we're recording.
+pub async fn fetch_active_game_id(client: &Client, creds: &LcuCredentials) -> Result<String> {
+    let url = format!("https://127.0.0.1:{}/lol-gameflow/v1/session", creds.port);
+    let auth = base64::engine::general_purpose::STANDARD.encode(format!("riot:{}", creds.password));
+    let resp = client
+        .get(&url)
+        .header("Authorization", format!("Basic {}", auth))
+        .send()
+        .await?;
+    if !resp.status().is_success() {
+        return Err(anyhow!("Gameflow session returned {}", resp.status()));
+    }
+    let json: Value = resp.json().await?;
+    let game_id = json["gameData"]["gameId"]
+        .as_i64()
+        .ok_or_else(|| anyhow!("gameData.gameId missing from gameflow session"))?;
+    Ok(game_id.to_string())
+}
+
 /// Fetch match summary from LCU after game ends.
-/// Returns data for the most recent completed game.
+/// `expected_game_id` is the game ID captured at game start — if provided, only a history
+/// entry matching that ID is accepted. This prevents a slow-to-appear game (e.g. Arena)
+/// from being confused with the previous game in history.
 pub async fn fetch_match_summary(
     client: &Client,
     creds: &LcuCredentials,
     summoner_name: &str,
+    expected_game_id: Option<&str>,
 ) -> Result<MatchSummary> {
     let current_summoner = fetch_current_summoner_identity(client, creds, summoner_name).await?;
     let url = format!(
@@ -263,11 +286,20 @@ pub async fn fetch_match_summary(
 
     for game in games {
         if let Some(summary) = extract_match_summary(&game, &current_summoner) {
+            if let Some(expected) = expected_game_id {
+                if summary.game_id != expected {
+                    continue;
+                }
+            }
             return Ok(summary);
         }
     }
 
-    Err(anyhow!("Could not resolve local player in recent match history payload"))
+    if let Some(expected) = expected_game_id {
+        Err(anyhow!("Game {expected} not yet in LCU match history"))
+    } else {
+        Err(anyhow!("Could not resolve local player in recent match history payload"))
+    }
 }
 
 fn extract_match_summary(game: &Value, current_summoner: &CurrentSummonerIdentity) -> Option<MatchSummary> {

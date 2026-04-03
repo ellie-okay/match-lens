@@ -45,6 +45,9 @@ pub struct AppState {
     pub recording: Mutex<Option<ActiveRecording>>,
     pub summoner_name: Mutex<String>,
     pub lcu_creds: Mutex<Option<lcu::LcuCredentials>>,
+    /// Game ID captured from the LCU gameflow session at game start.
+    /// Used at game end to ensure we match the right history entry.
+    pub active_game_id: Mutex<Option<String>>,
 }
 
 // ─── Tauri Commands ────────────────────────────────────────────────────────────
@@ -445,6 +448,23 @@ async fn on_game_start(app: &AppHandle) {
 
     let cfg = config::load();
 
+    // Capture the game ID from the LCU gameflow session immediately — it's available
+    // as soon as InProgress fires and is the only reliable way to anchor which game
+    // we're recording before match history is updated.
+    {
+        let creds_opt = state.lcu_creds.lock().await.clone();
+        if let Some(ref creds) = creds_opt {
+            let client = lcu::build_lcu_client().unwrap_or_else(|_| Client::new());
+            match lcu::fetch_active_game_id(&client, creds).await {
+                Ok(gid) => {
+                    info!("Active game ID captured: {gid}");
+                    *state.active_game_id.lock().await = Some(gid);
+                }
+                Err(e) => warn!("Could not capture active game ID: {e}"),
+            }
+        }
+    }
+
     // Wait for the game window to finish its fullscreen transition before detecting the
     // capture monitor and starting recording. At the moment InProgress is detected the
     // game window may not yet be positioned on the correct monitor.
@@ -668,10 +688,12 @@ async fn finalize_recording(
     let creds_opt = state.lcu_creds.lock().await.clone();
     let summoner_name = state.summoner_name.lock().await.clone();
 
+    let expected_game_id = state.active_game_id.lock().await.take();
+
     let (champion, kills, deaths, assists, result, duration_sec, game_id) =
         if let Some(ref creds) = creds_opt {
             let client = lcu::build_lcu_client().unwrap_or_else(|_| Client::new());
-            match lcu::fetch_match_summary(&client, creds, &summoner_name).await {
+            match lcu::fetch_match_summary(&client, creds, &summoner_name, expected_game_id.as_deref()).await {
                 Ok(s) => (
                     s.champion,
                     s.kills,
@@ -690,7 +712,7 @@ async fn finalize_recording(
                         0,
                         "Unknown".into(),
                         0,
-                        uuid_fallback(),
+                        expected_game_id.unwrap_or_else(uuid_fallback),
                     )
                 }
             }
@@ -702,7 +724,7 @@ async fn finalize_recording(
                 0,
                 "Unknown".into(),
                 0,
-                uuid_fallback(),
+                expected_game_id.unwrap_or_else(uuid_fallback),
             )
         };
 
