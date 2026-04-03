@@ -2243,7 +2243,7 @@ dependencies = [
 
 [[package]]
 name = "match-lens"
-version = "1.0.0"
+version = "1.0.4"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
