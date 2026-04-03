@@ -4,6 +4,8 @@ An open source, local-only replay recorder for League of Legends. No account, no
 
 > A free alternative to Outplayed, Medal, and similar tools.
 
+![Match Lens screenshot](.github/screenshot.png)
+
 **Windows 10 / 11 only.**
 
 ## Install
