@@ -16,6 +16,8 @@
   let deleteError = $state<string | null>(null);
   let lastKnownLatestMatchId: number | null = $state(null);
   let sidebarCollapsed = $state(false);
+  // When recording stops, track how many matches existed so we can detect when the new one lands.
+  let matchCountAtRecordingStop = -1;
 
   onMount(() => {
     let unlisten = () => {};
@@ -94,7 +96,27 @@
   }
 
   async function refreshRecordingStatus() {
+    const prevRecording = recordingStatus.recording;
     recordingStatus = await api.getRecordingStatus();
+
+    if (prevRecording && !recordingStatus.recording) {
+      // Recording just stopped — remember how many matches exist now so we can
+      // detect when the newly-processed match lands in the database.
+      matchCountAtRecordingStop = matches.length;
+    }
+
+    if (matchCountAtRecordingStop >= 0) {
+      if (recordingStatus.recording) {
+        // A new game started before the previous one finished processing — give up.
+        matchCountAtRecordingStop = -1;
+      } else {
+        // Keep refreshing the list until the new match appears.
+        await loadMatches({ autoSelectLatestOnNewTop: true });
+        if (matches.length > matchCountAtRecordingStop) {
+          matchCountAtRecordingStop = -1;
+        }
+      }
+    }
   }
 
   async function handleDelete(m: Match) {
