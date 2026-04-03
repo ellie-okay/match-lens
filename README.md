@@ -57,8 +57,6 @@ npm run tauri build
 
 The installer will be in `src-tauri/target/release/bundle/nsis/`.
 
-To cut a release, push a `v*` tag. GitHub Actions will build and publish the installer automatically.
-
 ## License
 
 MIT. See [LICENSE](LICENSE).
