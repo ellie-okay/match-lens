@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::os::windows::process::CommandExt as _;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::Arc;
@@ -9,6 +10,8 @@ use tokio::process::Command;
 use tokio::sync::Mutex;
 use tokio::time::{sleep, timeout};
 use tracing::{info, warn};
+
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkSample {
@@ -145,7 +148,8 @@ async fn measure_icmp_target(
             host,
         ])
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+        .stderr(Stdio::piped())
+        .creation_flags(CREATE_NO_WINDOW);
 
     let output = match timeout(
         Duration::from_millis(ICMP_PROBE_TIMEOUT_MS + 500),

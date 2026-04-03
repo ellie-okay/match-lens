@@ -2,9 +2,12 @@ use crate::audio::LoopbackCaptureSession;
 use anyhow::{anyhow, Context, Result};
 use std::fs::File;
 use std::io::Write;
+use std::os::windows::process::CommandExt as _;
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
 use tracing::{info, warn};
+
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 use windows::core::BOOL;
 use windows::Win32::Foundation::{CloseHandle, HANDLE, HWND, LPARAM, RECT};
 use windows::Win32::Graphics::Gdi::{
@@ -433,6 +436,7 @@ pub fn detect_encoder() -> Encoder {
     let ffmpeg = ffmpeg_binary_path();
     let output = Command::new(&ffmpeg)
         .args(["-encoders", "-v", "quiet"])
+        .creation_flags(CREATE_NO_WINDOW)
         .output();
 
     match output {
@@ -607,6 +611,7 @@ fn spawn_ffmpeg(args: Vec<String>, output_path: PathBuf) -> Result<RecordingSess
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
         .stderr(stderr_file)
+        .creation_flags(CREATE_NO_WINDOW)
         .spawn()
         .map_err(|e| anyhow!("Failed to spawn ffmpeg ({ffmpeg:?}): {e}"))?;
 
@@ -677,6 +682,7 @@ fn mux_audio_into_video(video_path: &Path, audio_path: &Path, output_path: &Path
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(stderr_file)
+        .creation_flags(CREATE_NO_WINDOW)
         .status()
         .map_err(|e| anyhow!("Failed to spawn ffmpeg mux step ({ffmpeg:?}): {e}"))?;
 
