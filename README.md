@@ -10,7 +10,7 @@ An open source, local-only replay recorder for League of Legends. No account, no
 
 ## Install
 
-1. Download **Match Lens_1.0.0_x64-setup.exe** from the [latest release](../../releases/latest)
+1. Download **Match Lens_x.x.x_x64-setup.exe** from the [latest release](../../releases/latest)
 2. Run the installer
 3. Match Lens will appear in your system tray
 
