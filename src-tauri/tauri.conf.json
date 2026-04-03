@@ -33,7 +33,9 @@
     ],
     "windows": {
       "wix": {},
-      "nsis": {}
+      "nsis": {
+        "installerHooks": "./nsis-hooks.nsh"
+      }
     }
   }
 }
